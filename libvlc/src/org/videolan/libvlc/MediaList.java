@@ -50,7 +50,7 @@ public class MediaList extends VLCObject<MediaList.Event> {
         }
     }
 
-    public interface EventListener extends VLCEvent.Listener<Event> {}
+    public interface EventListener extends VLCEvent.Listener<MediaList.Event> {}
 
     private int mCount = 0;
     private final SparseArray<Media> mMediaArray = new SparseArray<Media>();

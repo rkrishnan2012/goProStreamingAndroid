@@ -17,12 +17,12 @@ include $(PREBUILT_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE := FFmpegWrapper
+LOCAL_MODULE := GoProWrapper
 LOCAL_LDLIBS += -llog -lz
 LOCAL_SHARED_LIBRARIES := libvlcjni
 LOCAL_SRC_FILES := \
-    FFmpegMuxer.c \
-    FFmpegRtmp.c
+    GoProAcquire.c \
+    GoProStream.c
 
 LOCAL_CFLAGS := -O3
 

@@ -8,9 +8,10 @@ import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
-import com.infinitetakes.stream.videoSDK.FFmpegWrapper;
+import com.infinitetakes.stream.videoSDK.GoProWrapper;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -23,11 +24,12 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.net.URL;
-import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     TextView mStatusText;
     TextView mFrameCountText;
+    TextView mCameraName;
+    TextView mNeedsUpdate;
 
     //  State Variables
     boolean mIsCameraOn = false;
@@ -37,8 +39,8 @@ public class MainActivity extends AppCompatActivity {
     final Object mSyncObject = new Object();
 
     //  FFMpeg Stuff
-    final FFmpegWrapper wrapperRead = new FFmpegWrapper();
-    final FFmpegWrapper wrapperWrite = new FFmpegWrapper();
+    final GoProWrapper wrapperRead = new GoProWrapper();
+    final GoProWrapper wrapperWrite = new GoProWrapper();
     int frameCountReceive = 0;
     int ptrAudioStream;
     int ptrVideoStream;
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private Process streamingProcess;
     private KeepAliveThread mKeepAliveThread;
     private Network network;
+    private static final double minGoProVersion = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +60,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         mStatusText = (TextView)findViewById(R.id.txtStatus);
         mFrameCountText = (TextView)findViewById(R.id.txtFrameCount);
+        mCameraName = (TextView)findViewById(R.id.txtName);
+        mNeedsUpdate = (TextView)findViewById(R.id.txtNeedUpdate);
     }
 
 
@@ -80,11 +85,36 @@ public class MainActivity extends AppCompatActivity {
                      * To begin streaming, we need to send a "restart" signal to the goPro first,
                      * that will tell it to go into preview mode.
                      */
-                    url = new URL("http://10.5.5.9:8080/gp/gpControl/execute?p1=gpStream&c1=restart");
+                    url = new URL("http://10.5.5.9/camera/cv");
                     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
                     InputStream in = new BufferedInputStream(urlConnection.getInputStream());
                     BufferedReader inr = new BufferedReader(new InputStreamReader(in));
                     String line;
+                    final StringBuilder cameraName = new StringBuilder();
+                    while ((line = inr.readLine()) != null) {
+                        cameraName.append(line);
+                    }
+                    if(Double.parseDouble(cameraName.toString().split("\\.")[2]) < minGoProVersion){
+                        MainActivity.this.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mNeedsUpdate.setVisibility(View.VISIBLE);
+                            }
+                        });
+                        return;
+                    }
+                    Log.i("Camera Name", cameraName.toString());
+                    MainActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mCameraName.setText(cameraName.toString());
+                        }
+                    });
+                    urlConnection.disconnect();
+                    url = new URL("http://10.5.5.9:8080/gp/gpControl/execute?p1=gpStream&c1=restart");
+                    urlConnection = (HttpURLConnection) url.openConnection();
+                    in = new BufferedInputStream(urlConnection.getInputStream());
+                    inr = new BufferedReader(new InputStreamReader(in));
                     StringBuilder responseData = new StringBuilder();
                     while ((line = inr.readLine()) != null) {
                         responseData.append(line);
@@ -94,7 +124,7 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            mStatusText.setText("Camera is on.");
+                            mStatusText.setText("Camera is on");
                         }
                     });
                     synchronized (mSyncObject){
@@ -141,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                                         mNetworksReady = true;
                                         mSyncObject.notify();
                                     }
-                                    mStatusText.setText("Both networks ready.");
+                                    mStatusText.setText("Both networks ready");
                                 }
                             });
                         }
@@ -166,7 +196,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-                wrapperRead.setCallback(new FFmpegWrapper.Callbacks() {
+                wrapperRead.setCallback(new GoProWrapper.Callbacks() {
                     @Override
                     public void onConnectionDropped() {
 
@@ -190,17 +220,17 @@ public class MainActivity extends AppCompatActivity {
                                         mReadingCamera = true;
                                         mSyncObject.notify();
                                     }
-                                    mStatusText.setText("Camera frames started.");
+                                    mStatusText.setText("Camera frames started");
                                 }
                                 mFrameCountText.setText(Integer.toString(frameCountReceive));
                             }
                         });
                         if (mStreamingStarted) {
-                            wrapperWrite.writeGoProFrame(ptrData);
+                            wrapperWrite.writeFrame(ptrData);
                         }
                     }
                 });
-                wrapperRead.startGoPro();
+                wrapperRead.startReading();
             }
         }).start();
     }
@@ -221,13 +251,11 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     if(!mStreamingStarted){
                         ConnectivityManager.setProcessDefaultNetwork(network);
-                        FFmpegWrapper.Metadata meta = new FFmpegWrapper.Metadata();
+                        GoProWrapper.Metadata meta = new GoProWrapper.Metadata();
                         meta.outputFormatName = "flv";
-                        meta.outputFile = "rtmp://media-servers-v2dev.stre.am:1935/live/rohit";
-                        Log.e("ffmpeg", "right before init");
+                        meta.outputFile = "rtmp://media-servers-v2dev.stre.am:1935/live/gopro";
                         wrapperWrite.init(meta);
-                        Log.e("ffmpeg", "right before start");
-                        wrapperWrite.start(ptrAudioStream, ptrVideoStream);
+                        wrapperWrite.startWriting(ptrAudioStream, ptrVideoStream);
                         synchronized (mSyncObject) {
                             mStreamingStarted = true;
                             mSyncObject.notify();
@@ -244,14 +272,8 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Every few seconds, we need to send a UDP packet to the goPro to tell it to stay alive.
      */
-    private void sendUdpCommand(int paramInt)throws IOException
+    private void sendUdpCommand()throws IOException
     {
-        Locale localLocale = Locale.US;
-        Object[] arrayOfObject = new Object[4];
-        arrayOfObject[0] = Integer.valueOf(0);
-        arrayOfObject[1] = Integer.valueOf(0);
-        arrayOfObject[2] = Integer.valueOf(paramInt);
-        arrayOfObject[3] = Double.valueOf(0.0D);
         byte[] arrayOfByte = "_GPHD_:0:0:2:0.000000".getBytes();
         String str = CAMERA_IP;
         int i = PORT;
@@ -278,18 +300,11 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 while ((!Thread.currentThread().isInterrupted()) && (mOutgoingUdpSocket != null)) {
-                    sendUdpCommand(2);
+                    sendUdpCommand();
                     Thread.sleep(3000L);
                     System.out.println("keep alive udp");
                 }
-            }
-            catch (SocketException e) {
-                e.printStackTrace();
-            }
-            catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

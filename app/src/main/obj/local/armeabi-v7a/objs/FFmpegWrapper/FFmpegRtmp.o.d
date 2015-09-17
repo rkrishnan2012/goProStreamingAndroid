@@ -87,6 +87,8 @@
  /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavutil/pixdesc.h \
  /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavutil/mathematics.h \
  /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavutil/samplefmt.h \
+ /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavfilter/avfilter.h \
+ /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavfilter/version.h \
  /home/rkrishnan/Documents/androidSDK/ndk-bundle/platforms/android-3/arch-arm/usr/include/sys/socket.h \
  /home/rkrishnan/Documents/androidSDK/ndk-bundle/platforms/android-3/arch-arm/usr/include/linux/socket.h \
  /home/rkrishnan/Documents/androidSDK/ndk-bundle/platforms/android-3/arch-arm/usr/include/asm/socket.h \
@@ -281,6 +283,10 @@
 /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavutil/mathematics.h:
 
 /home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavutil/samplefmt.h:
+
+/home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavfilter/avfilter.h:
+
+/home/rkrishnan/Documents/Stre.am/TestGoPro2/app/src/main/jni/libavfilter/version.h:
 
 /home/rkrishnan/Documents/androidSDK/ndk-bundle/platforms/android-3/arch-arm/usr/include/sys/socket.h:
 

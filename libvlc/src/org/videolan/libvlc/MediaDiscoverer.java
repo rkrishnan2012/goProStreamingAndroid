@@ -34,7 +34,7 @@ public class MediaDiscoverer extends VLCObject<MediaDiscoverer.Event> {
         }
     }
 
-    public interface EventListener extends VLCEvent.Listener<Event> {}
+    public interface EventListener extends VLCEvent.Listener<MediaDiscoverer.Event> {}
 
     private MediaList mMediaList = null;
 

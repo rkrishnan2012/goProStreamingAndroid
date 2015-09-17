@@ -15,19 +15,10 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="Waiting for camera."
         android:id="@+id/txtStatus"
+        android:layout_marginTop="42dp"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="83dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:text="Frame Count"
-        android:id="@+id/textView"
-        android:layout_below="@+id/txtStatus"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="72dp" />
+        android:textStyle="bold|italic" />
 
     <TextView
         android:layout_width="wrap_content"
@@ -35,7 +26,38 @@
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:text="0"
         android:id="@+id/txtFrameCount"
-        android:layout_alignTop="@+id/textView"
-        android:layout_alignStart="@+id/txtStatus"
-        android:layout_marginStart="47dp" />
+        android:layout_below="@+id/txtName"
+        android:layout_centerHorizontal="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Frame Count"
+        android:id="@+id/textView2"
+        android:layout_below="@+id/txtName"
+        android:layout_alignParentStart="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="Go Pro"
+        android:id="@+id/txtName"
+        android:layout_marginTop="47dp"
+        android:layout_below="@+id/txtStatus"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="30dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="You need to update your GoPro to software version 3. To do this, open the GoPro app and follow instructions to update."
+        android:id="@+id/txtNeedUpdate"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:textColor="#d05050"
+        android:visibility="gone" />
+
 </RelativeLayout>

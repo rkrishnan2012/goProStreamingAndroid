@@ -45,7 +45,7 @@ public class Media extends VLCObject<Media.Event> {
         }
     }
 
-    public interface EventListener extends VLCEvent.Listener<Event> {}
+    public interface EventListener extends VLCEvent.Listener<Media.Event> {}
 
     /**
      * libvlc_media_type_t
