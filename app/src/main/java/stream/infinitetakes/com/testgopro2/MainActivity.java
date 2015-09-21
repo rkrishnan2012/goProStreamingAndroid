@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import com.infinitetakes.stream.videoSDK.GoProWrapper;
+import com.infinitetakes.stream.videoSDK.PreviewSurface;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -22,7 +23,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
-import java.net.SocketException;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
@@ -30,6 +30,7 @@ public class MainActivity extends AppCompatActivity {
     TextView mFrameCountText;
     TextView mCameraName;
     TextView mNeedsUpdate;
+    PreviewSurface mPreviewSurface;
 
     //  State Variables
     boolean mIsCameraOn = false;
@@ -47,10 +48,8 @@ public class MainActivity extends AppCompatActivity {
 
     //  Talking to the GoPro
     private static final String CAMERA_IP = "10.5.5.9";
-    private static int PORT = 8554;
+    private static final int PORT = 8554;
     private static DatagramSocket mOutgoingUdpSocket;
-    private Process streamingProcess;
-    private KeepAliveThread mKeepAliveThread;
     private Network network;
     private static final double minGoProVersion = 3;
 
@@ -62,6 +61,8 @@ public class MainActivity extends AppCompatActivity {
         mFrameCountText = (TextView)findViewById(R.id.txtFrameCount);
         mCameraName = (TextView)findViewById(R.id.txtName);
         mNeedsUpdate = (TextView)findViewById(R.id.txtNeedUpdate);
+        mPreviewSurface = (PreviewSurface)findViewById(R.id.previewScreen);
+        mPreviewSurface.setNativeWrapper(wrapperRead);
     }
 
 
@@ -85,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
                      * To begin streaming, we need to send a "restart" signal to the goPro first,
                      * that will tell it to go into preview mode.
                      */
-                    url = new URL("http://10.5.5.9/camera/cv");
+                    url = new URL(getString(R.string.gopro_info_url));
                     HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
                     InputStream in = new BufferedInputStream(urlConnection.getInputStream());
                     BufferedReader inr = new BufferedReader(new InputStreamReader(in));
@@ -111,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                     urlConnection.disconnect();
-                    url = new URL("http://10.5.5.9:8080/gp/gpControl/execute?p1=gpStream&c1=restart");
+                    url = new URL(getString(R.string.gopro_restart_url));
                     urlConnection = (HttpURLConnection) url.openConnection();
                     in = new BufferedInputStream(urlConnection.getInputStream());
                     inr = new BufferedReader(new InputStreamReader(in));
@@ -124,7 +125,7 @@ public class MainActivity extends AppCompatActivity {
                     MainActivity.this.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            mStatusText.setText("Camera is on");
+                            mStatusText.setText(R.string.camera_is_on);
                         }
                     });
                     synchronized (mSyncObject){
@@ -171,7 +172,7 @@ public class MainActivity extends AppCompatActivity {
                                         mNetworksReady = true;
                                         mSyncObject.notify();
                                     }
-                                    mStatusText.setText("Both networks ready");
+                                    mStatusText.setText(R.string.both_networks_ready);
                                 }
                             });
                         }
@@ -253,7 +254,7 @@ public class MainActivity extends AppCompatActivity {
                         ConnectivityManager.setProcessDefaultNetwork(network);
                         GoProWrapper.Metadata meta = new GoProWrapper.Metadata();
                         meta.outputFormatName = "flv";
-                        meta.outputFile = "rtmp://media-servers-v2dev.stre.am:1935/live/gopro";
+                        meta.outputFile = getString(R.string.rtmp_url);
                         wrapperWrite.init(meta);
                         wrapperWrite.startWriting(ptrAudioStream, ptrVideoStream);
                         synchronized (mSyncObject) {
@@ -283,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void keepAlive() {
-        mKeepAliveThread = new KeepAliveThread();
+        KeepAliveThread mKeepAliveThread = new KeepAliveThread();
         mKeepAliveThread.start();
     }
 

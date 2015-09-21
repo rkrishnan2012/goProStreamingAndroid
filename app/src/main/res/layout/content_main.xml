@@ -60,4 +60,11 @@
         android:textColor="#d05050"
         android:visibility="gone" />
 
+    <com.infinitetakes.stream.videoSDK.PreviewSurface
+        android:layout_width="432px"
+        android:layout_height="240px"
+        android:id="@+id/previewScreen"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
+
 </RelativeLayout>

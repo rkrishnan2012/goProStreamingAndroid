@@ -18,11 +18,11 @@ include $(PREBUILT_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE := GoProWrapper
-LOCAL_LDLIBS += -llog -lz
+LOCAL_LDLIBS += -llog -lz -lGLESv1_CM
 LOCAL_SHARED_LIBRARIES := libvlcjni
 LOCAL_SRC_FILES := \
-    GoProAcquire.c \
-    GoProStream.c
+    GoPro/GoProAcquire.c \
+    GoPro/GoProStream.c
 
 LOCAL_CFLAGS := -O3
 

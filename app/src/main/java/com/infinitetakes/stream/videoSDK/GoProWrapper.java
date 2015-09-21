@@ -17,10 +17,17 @@
 
 package com.infinitetakes.stream.videoSDK;
 
+import android.content.Context;
+import android.opengl.GLSurfaceView;
+import android.os.SystemClock;
+import android.util.AttributeSet;
 import android.util.Log;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
+import javax.microedition.khronos.egl.EGLConfig;
+import javax.microedition.khronos.opengles.GL10;
 
 public class GoProWrapper {
     private Callbacks callback = null;
@@ -29,13 +36,15 @@ public class GoProWrapper {
         System.loadLibrary("GoProWrapper");
     }
 
+    //  Acquiring from GoPro
     public native void startReading();
-
     public native void init(Metadata jOpts) throws Exception;
-
+    //  Streaming to RTMP
     public native void startWriting(int audioStreamPtr, int videoStreamPtr) throws IOException;
-
     public native void writeFrame(int addy);
+    //  OpenGL Surface stuff
+    public native void surfaceResize(int w, int h);
+    public native void surfaceDraw();
 
     private void onConnectionDropped() {
         if (callback != null) {
@@ -79,4 +88,5 @@ public class GoProWrapper {
 
         void onReceiveGoProFrame(int ptrData, int ptrAudioStream, int ptrVideoStream);
     }
+
 }
