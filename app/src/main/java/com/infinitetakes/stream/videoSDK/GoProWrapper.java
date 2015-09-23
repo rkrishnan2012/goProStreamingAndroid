@@ -9,7 +9,8 @@ import android.net.NetworkRequest;
 import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.io.BufferedInputStream;
@@ -62,7 +63,7 @@ public class GoProWrapper {
     Callbacks mCallbacks = null;
     private Network network;
     protected GoProC mReadProcess = new GoProC();
-    protected GoProC mWriteProcess = null;
+    protected GoProC mWriteProcess = new GoProC();
     int ptrAudioStream;
     int ptrVideoStream;
     int mFramesRx = 0;
@@ -113,67 +114,36 @@ public class GoProWrapper {
         startStreamingFrames();
     }
 
-    private void turnOnCamera() {
+    protected void switchToLTE(){
         new Thread(new Runnable() {
             @Override
             public void run() {
-                URL url;
-                try {
-                    // Sanity check to see if we're connected to wifi and the GoPro
-                    WifiManager wm = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
-                    WifiInfo wi = wm.getConnectionInfo();
-                    SupplicantState supState = wi.getSupplicantState();
-                    String ip = getLocalIpAddress();
-                    if (ip == null || supState.equals(SupplicantState.DISCONNECTED)
-                            || supState.equals(SupplicantState.UNINITIALIZED)
-                            || supState.equals(SupplicantState.INACTIVE)
-                            || supState.equals(SupplicantState.INTERFACE_DISABLED)) {
-                        mIsError = true;
-                        mCallbacks.onError(NO_WIFI);
-                    } else if (!ip.startsWith("10.5.5")) {
-                        mIsError = true;
-                        mCallbacks.onError(NOT_GOPRO);
-                    } else {
-                        //  Check the name and version of the GoPro connected.
-                        url = new URL(mContext.getString(R.string.gopro_info_url));
-                        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
-                        InputStream in = new BufferedInputStream(urlConnection.getInputStream());
-                        BufferedReader inr = new BufferedReader(new InputStreamReader(in));
-                        final StringBuilder cameraName = new StringBuilder();
-                        String line;
-                        while ((line = inr.readLine()) != null) {
-                            cameraName.append(line);
-                        }
-                        urlConnection.disconnect();
-                        Log.d(TAG, "Found camera " + cameraName);
-                        if (Double.parseDouble(cameraName.toString().split("\\.")[2]) < MIN_GOPRO_VERSION) {
-                            mIsError = true;
-                            mCallbacks.onError(UPDATE_GOPRO);
-                        } else {
-                            //  Send a restart signal to the GoPro before we begin streaming.
-                            url = new URL(mContext.getString(R.string.gopro_restart_url));
-                            urlConnection = (HttpURLConnection) url.openConnection();
-                            in = new BufferedInputStream(urlConnection.getInputStream());
-                            inr = new BufferedReader(new InputStreamReader(in));
-                            String signalResponse = inr.readLine();
-                            urlConnection.disconnect();
-                            Log.i("Restart signal", signalResponse);
-                            mIsCameraOn = true;
+                final ConnectivityManager cm = (ConnectivityManager)
+                        mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkRequest.Builder req = new NetworkRequest.Builder();
+                req.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
+                req.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
+                NetworkRequest netreq = req.build();
+                ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
+                    @Override
+                    public void onAvailable(final Network network) {
+                        if(!mNetworksReady){
+                            ConnectivityManager.setProcessDefaultNetwork(network);
+                            GoProWrapper.this.network = network;
+                            synchronized (mSyncObject){
+                                mNetworksReady = true;
+                                mSyncObject.notify();
+                            }
                         }
                     }
-                } catch (IOException e) {
-                    mIsError = true;
-                    Log.e("GoProWrapper", "Error connecting to the GoPro", e);
-                } finally {
-                    synchronized (mSyncObject) {
-                        mSyncObject.notify();
-                    }
-                }
+                };
+                cm.requestNetwork(netreq, callback);
+                cm.registerNetworkCallback(netreq, callback);
             }
         }).start();
     }
 
-    private void startReadingGoPro(){
+    protected void startReadingGoPro(){
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -198,17 +168,18 @@ public class GoProWrapper {
                     }
 
                     @Override
-                    public void onReceiveGoProFrame(int ptrData, int ptrAudioStream, int ptrVideoStream) {
+                    public void onReceiveGoProFrame(int ptrData, final int ptrAudioStream, final int ptrVideoStream) {
                         mFramesRx++;
                         if (!mReadingCamera) {
                             synchronized (mSyncObject) {
+                                GoProWrapper.this.ptrAudioStream = ptrAudioStream;
+                                GoProWrapper.this.ptrVideoStream = ptrVideoStream;
                                 mReadingCamera = true;
                                 mSyncObject.notify();
                             }
                         }
                         if (mStreamingStarted) {
                             mWriteProcess.writeFrame(ptrData);
-                            mFramesTx++;
                         }
                     }
                 });
@@ -217,7 +188,7 @@ public class GoProWrapper {
         }).start();
     }
 
-    private void startStreamingFrames(){
+    protected void startStreamingFrames(){
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -232,24 +203,10 @@ public class GoProWrapper {
                 }
                 try {
                     if(!mStreamingStarted){
-                        boolean success = false;
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            ConnectivityManager connMan = (ConnectivityManager)mContext
-                                    .getSystemService(Context.CONNECTIVITY_SERVICE);
-                            success = connMan.bindProcessToNetwork(network);
-                        }
-                        else{
-                            //noinspection deprecation
-                            success = ConnectivityManager.setProcessDefaultNetwork(network);
-                        }
-                        boolean c = isConnected(mContext);
-                        Log.d(TAG, "" + c);
-                        Metadata meta = new Metadata();
+                        ConnectivityManager.setProcessDefaultNetwork(network);
+                        GoProWrapper.Metadata meta = new GoProWrapper.Metadata();
                         meta.outputFormatName = "flv";
-                        meta.outputFile = mUrl;
-                        if(mWriteProcess == null){
-                            mWriteProcess = new GoProC();
-                        }
+                        meta.outputFile = mContext.getString(R.string.rtmp_url);
                         mWriteProcess.init(meta);
                         mWriteProcess.startWriting(ptrAudioStream, ptrVideoStream);
                         synchronized (mSyncObject) {
@@ -264,6 +221,96 @@ public class GoProWrapper {
             }
         }).start();
     }
+
+    private void turnOnCamera() {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                URL url;
+                try {
+                    // Sanity check to see if we're connected to wifi and the GoPro
+                    WifiManager wm = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+                    WifiInfo wi = wm.getConnectionInfo();
+                    SupplicantState supState = wi.getSupplicantState();
+                    String ip = getLocalIpAddress();
+                    if (ip == null || supState.equals(SupplicantState.DISCONNECTED)
+                            || supState.equals(SupplicantState.UNINITIALIZED)
+                            || supState.equals(SupplicantState.INACTIVE)
+                            || supState.equals(SupplicantState.INTERFACE_DISABLED)) {
+                        mIsError = true;
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mCallbacks.onError(NO_WIFI);
+                            }
+                        });
+                    } else if (!ip.startsWith("10.5.5")) {
+                        mIsError = true;
+                        new Handler(Looper.getMainLooper()).post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mCallbacks.onError(NOT_GOPRO);
+                            }
+                        });
+                    } else {
+                        //  Check the name and version of the GoPro connected.
+                        url = new URL(mContext.getString(R.string.gopro_info_url));
+                        HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+                        InputStream in = new BufferedInputStream(urlConnection.getInputStream());
+                        BufferedReader inr = new BufferedReader(new InputStreamReader(in));
+                        final StringBuilder cameraName = new StringBuilder();
+                        String line;
+                        while ((line = inr.readLine()) != null) {
+                            cameraName.append(line);
+                        }
+                        urlConnection.disconnect();
+                        if(mSearchThread == null || !mSearchThread.foundGoPro){
+                            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            mCallbacks.onFoundGoPro(cameraName.toString());
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                        Log.d(TAG, "Found camera " + cameraName);
+                        if (Double.parseDouble(cameraName.toString().split("\\.")[2]) < MIN_GOPRO_VERSION) {
+                            mIsError = true;
+                            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mCallbacks.onError(UPDATE_GOPRO);
+                                }
+                            });
+                        } else {
+                            //  Send a restart signal to the GoPro before we begin streaming.
+                            url = new URL(mContext.getString(R.string.gopro_restart_url));
+                            urlConnection = (HttpURLConnection) url.openConnection();
+                            in = new BufferedInputStream(urlConnection.getInputStream());
+                            inr = new BufferedReader(new InputStreamReader(in));
+                            String signalResponse = inr.readLine();
+                            urlConnection.disconnect();
+                            Log.i("Restart signal", signalResponse);
+                            mIsCameraOn = true;
+                        }
+                    }
+                } catch (IOException e) {
+                    mIsError = true;
+                    Log.e("GoProWrapper", "Error connecting to the GoPro", e);
+                } finally {
+                    synchronized (mSyncObject) {
+                        mSyncObject.notify();
+                    }
+                }
+            }
+        }).start();
+    }
+
+
 
     public static boolean isConnected(Context context) {
         ConnectivityManager cm = (ConnectivityManager)context
@@ -300,56 +347,7 @@ public class GoProWrapper {
         }
     }
 
-    private void switchToLTE(){
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                synchronized (mSyncObject){
-                    while(!mIsCameraOn){
-                        try {
-                            mSyncObject.wait(300);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-                final ConnectivityManager cm = (ConnectivityManager)
-                        mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkRequest.Builder req = new NetworkRequest.Builder();
-                req.addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
-                req.addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR);
-                NetworkRequest netReq = req.build();
-                ConnectivityManager.NetworkCallback callback = new ConnectivityManager.NetworkCallback() {
-                    @Override
-                    public void onAvailable(final Network network) {
-                        if(!mNetworksReady){
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                                ConnectivityManager connMan = (ConnectivityManager)mContext
-                                        .getSystemService(Context.CONNECTIVITY_SERVICE);
-                                connMan.bindProcessToNetwork(network);
-                            }
-                            else{
-                                //noinspection deprecation
-                                ConnectivityManager.setProcessDefaultNetwork(network);
-                            }
-                            GoProWrapper.this.network = network;
-                            synchronized (mSyncObject){
-                                mNetworksReady = true;
-                                mSyncObject.notify();
-                            }
-                        }
-                    }
 
-                    @Override
-                    public void onLost(Network network){
-                        //ToDo Implement this...
-                    }
-                };
-                cm.requestNetwork(netReq, callback);
-                cm.registerNetworkCallback(netReq, callback);
-            }
-        }).start();
-    }
 
     private String getLocalIpAddress() {
         WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
@@ -409,7 +407,7 @@ public class GoProWrapper {
      */
     private class SearchThread implements Runnable {
         private volatile boolean shutdown = false;
-        private boolean foundGoPro = false;
+        public boolean foundGoPro = false;
         private Context context;
 
         public SearchThread(Context context) {
@@ -441,7 +439,7 @@ public class GoProWrapper {
             return shutdown;
         }
 
-        public boolean checkConnected() {
+        private boolean checkConnected() {
             // Sanity check to see if we're connected to wifi and the GoPro
             String ip = getLocalIpAddress();
             if (ip == null || ip.startsWith("10.5.5")) {
@@ -466,7 +464,7 @@ public class GoProWrapper {
     }
 
     @SuppressWarnings("unused")
-    protected static class Metadata {
+    public static class Metadata {
         //  Output codec options (Configured specific to the GoPro, don't change this)
         public int videoWidth = 432;
         public int videoHeight = 240;

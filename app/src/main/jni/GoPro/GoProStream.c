@@ -110,8 +110,6 @@ void release_resources() {
     }
     if (outputFormatContext) {
         LOGI("Freeing output context.");
-        if (outputFormatContext && !(outputFormatContext->oformat->flags & AVFMT_NOFILE))
-            avio_close(outputFormatContext->pb);
         avformat_free_context(outputFormatContext);
     }
     if (packet) {
@@ -124,145 +122,113 @@ void release_resources() {
 
 JNIEXPORT void JNICALL
 Java_com_infinitetakes_stream_videoSDK_GoProC_init(JNIEnv *env, jobject  __unused instance,
-                                                          jobject jOpts) {
-    // Get the values passed in from java side and populate the struct.
-    populate_metadata_from_java(env, jOpts);
-    //  Connect to the network URL.
-    initConnection(env);
-    isConnectionOpen = 0;
-}
-
-int hostname_to_ip(char * hostname , char* ip)
-{
-    struct hostent *he;
-    struct in_addr **addr_list;
-    int i;
-
-    if ( (he = gethostbyname( hostname ) ) == NULL)
-    {
-        // get the host info
-        LOGE("gethostbyname");
-        return 1;
-    }
-
-    addr_list = (struct in_addr **) he->h_addr_list;
-
-    for(i = 0; addr_list[i] != NULL; i++)
-    {
-        //Return the first one;
-        LOGI("IP IS %s", inet_ntoa(*addr_list[i]) );
-        strcpy(ip , inet_ntoa(*addr_list[i]) );
-        return 0;
-    }
-
-    return 1;
+jobject jOpts) {
+// Get the values passed in from java side and populate the struct.
+populate_metadata_from_java(env, jOpts);
+//  Connect to the network URL.
+initConnection(env);
+isConnectionOpen = 0;
 }
 
 JNIEXPORT void JNICALL
 Java_com_infinitetakes_stream_videoSDK_GoProC_startWriting(JNIEnv  __unused *env,
-                                                           jobject  __unused instance,
-                                                    jint ptrAudioStream, jint ptrVideoStream) {
-    // The input audio and video stream are passed in from the other C file as pointers.
-    AVStream *videoStreamIn = (AVStream*)ptrVideoStream, *audioStreamIn = (AVStream*)ptrAudioStream;
-    if(videoStreamIn != NULL){
-        // Create an output video stream
-        videoStream = avformat_new_stream(outputFormatContext, videoStreamIn->codec->codec);
-        //  Copy codec parameters from input video stream to output video stream.
-        int ret = avcodec_copy_context(videoStream->codec, videoStreamIn->codec);
-        if (ret < 0) {
-        LOGE("Failed to copy context from input to output audio stream codec  context\n");
-        releaseOutputContext();
-        }
-        //  Some things are not set in the input stream, but required for output stream.
-        videoStream->codec->width = metadata.videoWidth;
-        videoStream->codec->height = metadata.videoHeight;
-        videoStream->codec->codec_tag = 0;
-        videoStream->codec->bit_rate = metadata.videoBitrate;
-        videoStream->codec->framerate = (AVRational){30,1};
-        videoStream->time_base = videoStream->codec->time_base;
-        if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
-        videoStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        }
-    }
-    if(audioStreamIn != NULL){
-        //  Create an output audio stream.
-        audioStream = avformat_new_stream(outputFormatContext, audioStreamIn->codec->codec);
-        //  Copy codec parameters from input audio stream to output audio stream.
-        int ret = avcodec_copy_context(audioStream->codec, audioStreamIn->codec);
-        if (ret < 0) {
-        LOGE("Failed to copy context from input to output audio stream codec context\n");
-        releaseOutputContext();
-        }
-        //  Some things are not set in the input stream, but required for output stream.
-        audioStream->time_base = audioStream->codec->time_base;
-        audioStream->codec->codec_tag = 0;
-        if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
-        audioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-        }
-    }
-    //  If the connection was not able to be opened earlier, try again now.
-    if (isConnectionOpen == 0) {
-        LOGI("Connection isn't opened yet.");
-        if (!(outputFormatContext->oformat->flags & AVFMT_NOFILE)) {
-            if (!avio_open(&outputFormatContext->pb, metadata.outputFile, AVIO_FLAG_WRITE)){
-                LOGI("Opened connection success.");
-                isConnectionOpen = 1;
-            }
-            else{
-                LOGE("Can't connect to the internet.");
-                jclass exc = (*env)->FindClass(env, "java/lang/Exception");
-                (*env)->ThrowNew(env, exc, "Internet connection is not available.");
-                release_resources();
-                return;
-            }
-        }
-        else {
-            LOGI("No need to open connection.");
-            isConnectionOpen = 1;
-        }
-    }
-char *hostname = "http://google.com";
-char ip[100];
-hostname_to_ip(hostname , ip);
-LOGI("%s resolved to %s" , hostname , ip);
-
-// Write the header to the stream
-    if(avformat_write_header(outputFormatContext, NULL) < 0){
-        LOGE("Couldn't write header to the file.");
-        release_resources();
-        exit(1);
-    }
-    //  Malloc the packet early for later use.
-    if (!packet) {
-        packet = av_malloc(sizeof(AVPacket));
-        av_init_packet(packet);
-    }
+        jobject  __unused instance,
+        jint ptrAudioStream, jint ptrVideoStream) {
+// The input audio and video stream are passed in from the other C file as pointers.
+AVStream *videoStreamIn = (AVStream*)ptrVideoStream, *audioStreamIn = (AVStream*)ptrAudioStream;
+if(videoStreamIn != NULL){
+// Create an output video stream
+videoStream = avformat_new_stream(outputFormatContext, videoStreamIn->codec->codec);
+//  Copy codec parameters from input video stream to output video stream.
+int ret = avcodec_copy_context(videoStream->codec, videoStreamIn->codec);
+if (ret < 0) {
+LOGE("Failed to copy context from input to output audio stream codec  context\n");
+releaseOutputContext();
+}
+//  Some things are not set in the input stream, but required for output stream.
+videoStream->codec->width = metadata.videoWidth;
+videoStream->codec->height = metadata.videoHeight;
+videoStream->codec->codec_tag = 0;
+videoStream->codec->bit_rate = metadata.videoBitrate;
+videoStream->codec->framerate = (AVRational){30,1};
+videoStream->time_base = videoStream->codec->time_base;
+if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
+videoStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+}
+}
+if(audioStreamIn != NULL){
+//  Create an output audio stream.
+audioStream = avformat_new_stream(outputFormatContext, audioStreamIn->codec->codec);
+//  Copy codec parameters from input audio stream to output audio stream.
+int ret = avcodec_copy_context(audioStream->codec, audioStreamIn->codec);
+if (ret < 0) {
+LOGE("Failed to copy context from input to output audio stream codec context\n");
+releaseOutputContext();
+}
+//  Some things are not set in the input stream, but required for output stream.
+audioStream->time_base = audioStream->codec->time_base;
+audioStream->codec->codec_tag = 0;
+if (outputFormatContext->oformat->flags & AVFMT_GLOBALHEADER) {
+audioStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
+}
+}
+//  If the connection was not able to be opened earlier, try again now.
+if (isConnectionOpen == 0) {
+LOGI("Connection isn't opened yet.");
+if (!(outputFormatContext->oformat->flags & AVFMT_NOFILE)) {
+if (!avio_open(&outputFormatContext->pb, metadata.outputFile, AVIO_FLAG_WRITE)){
+LOGI("Opened connection success.");
+isConnectionOpen = 1;
+}
+else{
+LOGE("Can't connect to the internet.");
+jclass exc = (*env)->FindClass(env, "java/lang/Exception");
+(*env)->ThrowNew(env, exc, "Internet connection is not available.");
+release_resources();
+return;
+}
+}
+else {
+LOGI("No need to open connection.");
+isConnectionOpen = 1;
+}
+}
+// Write the header to the stream.
+if(avformat_write_header(outputFormatContext, NULL) < 0){
+LOGE("Couldn't write header to the file.");
+release_resources();
+}
+//  Malloc the packet early for later use.
+if (!packet) {
+packet = av_malloc(sizeof(AVPacket));
+av_init_packet(packet);
+}
 }
 
 JNIEXPORT void JNICALL
 Java_com_infinitetakes_stream_videoSDK_GoProC_writeFrame(JNIEnv  __unused *env,
         jobject  __unused instance, jint addy) {
-    //  Reference to AVPacket is passed in from other C process.
-    AVPacket *pkt = (AVPacket*)addy;
-    int error;
-    if(pkt->stream_index == videoStreamIndex){
-        //  Input video stream packets don't have a duration, so detect that value.
-        pkt->pts /= 100;
-        pkt->dts /= 100;
-        pkt->duration = pkt->pts - lastVideoPts;
-        lastVideoPts = pkt->pts;
-    }
-    else{
-        //  Input audio stream packets don't have a pts+dts, so detect that.
-        pkt->pts = lastAudioPts;
-        pkt->dts = lastAudioPts;
-        pkt->pts /= 100;
-        pkt->dts /= 100;
-        lastAudioPts += pkt->duration;
-    }
-    error = av_interleaved_write_frame(outputFormatContext, pkt);
-    if (error < 0) {
-        LOGE("Couldn't write frame!");
-    }
-    frameCount++;
+//  Reference to AVPacket is passed in from other C process.
+AVPacket *pkt = (AVPacket*)addy;
+int error;
+if(pkt->stream_index == videoStreamIndex){
+//  Input video stream packets don't have a duration, so detect that value.
+pkt->pts /= 100;
+pkt->dts /= 100;
+pkt->duration = pkt->pts - lastVideoPts;
+lastVideoPts = pkt->pts;
+}
+else{
+//  Input audio stream packets don't have a pts+dts, so detect that.
+pkt->pts = lastAudioPts;
+pkt->dts = lastAudioPts;
+pkt->pts /= 100;
+pkt->dts /= 100;
+lastAudioPts += pkt->duration;
+}
+error = av_interleaved_write_frame(outputFormatContext, pkt);
+if (error < 0) {
+LOGE("Couldn't write frame!");
+}
+frameCount++;
 }

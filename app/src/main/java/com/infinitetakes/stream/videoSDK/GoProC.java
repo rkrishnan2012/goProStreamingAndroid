@@ -7,14 +7,14 @@ import java.io.IOException;
  * PreviewSurface will access the surfaceDraw, and surfaceResize.
  */
 @SuppressWarnings({"JniMissingFunction", "unused"})
-class GoProC {
+public class GoProC {
     static {
         System.loadLibrary("GoProWrapper");
     }
     /**
      * These are callbacks fired from the C to the Java side.
      */
-    protected interface InternalCallbacks {
+    public interface InternalCallbacks {
         void onConnectionDropped();
 
         void onConnectionRestored();
@@ -25,14 +25,14 @@ class GoProC {
     protected InternalCallbacks callback = null;
 
     //  Acquiring from GoPro
-    protected native void startReading();
+    public native void startReading();
 
-    protected native void init(GoProWrapper.Metadata jOpts) throws Exception;
+    public native void init(GoProWrapper.Metadata jOpts) throws Exception;
 
     //  Streaming to RTMP
-    protected native void startWriting(int audioStreamPtr, int videoStreamPtr) throws IOException;
+    public native void startWriting(int audioStreamPtr, int videoStreamPtr) throws IOException;
 
-    protected native void writeFrame(int addy);
+    public native void writeFrame(int addy);
 
     //  OpenGL Surface stuff (this is protected, because PreviewSurface will call these).
     protected native void surfaceResize(int w, int h);

@@ -44,11 +44,9 @@ void releaseOutputContext() {
 
 static void wait_vsync()
 {
-    LOGE("waiting vsync");
     pthread_mutex_lock(&s_vsync_mutex);
     pthread_cond_wait(&s_vsync_cond, &s_vsync_mutex);
     pthread_mutex_unlock(&s_vsync_mutex);
-    LOGE("Waited vsync");
 }
 
 static void check_gl_error(const char* op)
@@ -74,13 +72,13 @@ void renderPreview()
     glDrawTexiOES(0, 0, 0, surfaceWidth, surfaceHeight);
     /* tell the other thread to carry on */
     pthread_cond_signal(&s_vsync_cond);
-    LOGE("Done");
 }
 
 #ifdef ANDROID
 JNIEXPORT void JNICALL
 Java_com_infinitetakes_stream_videoSDK_GoProC_startReading(JNIEnv *env,
                                                               jobject  __unused instance) {
+    LOGE("Started reading!");
     av_register_all();
     avformat_network_init();
     avcodec_register_all();
@@ -146,7 +144,6 @@ Java_com_infinitetakes_stream_videoSDK_GoProC_startReading(JNIEnv *env,
     }
 
     av_dump_format(avFmtCtx, 0, "udp://10.5.5.9:8554", 0);
-
     jclass thisClass = (*env)->GetObjectClass(env, instance);
     jmethodID connectionCallback = (*env)->GetMethodID(env, thisClass, "onReceiveGoProFrame", "(III)V");
 

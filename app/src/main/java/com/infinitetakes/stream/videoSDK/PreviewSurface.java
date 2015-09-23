@@ -23,7 +23,7 @@ public class PreviewSurface extends GLSurfaceView {
     public GoProWrapper mWrapper;
     boolean needsSurfaceChange = false;
     int currWidth, currHeight;
-    public static final double GOPRO_H_W_RATIO = 5/9;
+    public static final float GOPRO_H_W_RATIO = 5f/9f;
 
     public void setNativeWrapper(GoProWrapper wrapper){
         this.mWrapper = wrapper;
