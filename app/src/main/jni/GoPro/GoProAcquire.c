@@ -61,12 +61,6 @@ static void check_gl_error(const char* op)
 
 void renderPreview()
 {
-    /*if(s_pixels == NULL){
-        s_pixels = malloc(S_PIXELS_SIZE);
-    }
-//
-    memset(s_pixels, 0, S_PIXELS_SIZE);
-    render_pixels(s_pixels);*/
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glTexImage2D(GL_TEXTURE_2D,		/* target */
                  0,			/* level */
@@ -77,7 +71,7 @@ void renderPreview()
                  GL_RGB,			/* format */
                  GL_UNSIGNED_BYTE,/* type */
                  s_pixels);		/* pixels */
-    glDrawTexiOES(0, 0, 0, 432, 240);
+    glDrawTexiOES(0, 0, 0, surfaceWidth, surfaceHeight);
     /* tell the other thread to carry on */
     pthread_cond_signal(&s_vsync_cond);
     LOGE("Done");
@@ -85,7 +79,7 @@ void renderPreview()
 
 #ifdef ANDROID
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startReading(JNIEnv *env,
+Java_com_infinitetakes_stream_videoSDK_GoProC_startReading(JNIEnv *env,
                                                               jobject  __unused instance) {
     av_register_all();
     avformat_network_init();
@@ -196,14 +190,9 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startReading(JNIEnv *env,
                     LOGE("Unable to decode the video frame.");
                 }
                 else if (got_frame) {
-                    LOGE("video_frame coded_n:%d pts:%" PRId64,
-                           decodedVideoFrame->coded_picture_number,
-                           decodedVideoFrame->pts);
-                    LOGE("Scaling. %d, %d, %d", numBytes, decodedVideoFrame->height, decodedVideoFrame->width);
                     sws_scale(sws_ctx, (const uint8_t * const*)decodedVideoFrame->data,
                         decodedVideoFrame->linesize, 0, 240, pFrameRGB->data,
                         pFrameRGB->linesize);
-                    LOGE("Done scaling.");
                     s_pixels = pFrameRGB->data[0];
                     wait_vsync();
                 }
@@ -219,9 +208,9 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startReading(JNIEnv *env,
 }
 
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_surfaceResize(JNIEnv *env, jclass clazz, jint w, jint h)
+Java_com_infinitetakes_stream_videoSDK_GoProC_surfaceResize(JNIEnv *env, jclass clazz, jint w, jint h)
 {
-       LOGI("native_gl_resize %d %d", w, h);
+    LOGI("native_gl_resize %d %d", w, h);
 	glDeleteTextures(1, &s_texture);
 	GLuint *start = s_disable_caps;
 	while (*start)
@@ -240,13 +229,12 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_surfaceResize(JNIEnv *env, j
 	int rect[4] = {0, 240, 432, -240};
 	glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_CROP_RECT_OES, rect);
 	check_gl_error("glTexParameteriv");
-    LOGI("Size is %d by %d", w, h);
 	surfaceWidth = w;
 	surfaceHeight = h;
 }
 
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_surfaceDraw(JNIEnv *env, jclass clazz, jint w, jint h)
+Java_com_infinitetakes_stream_videoSDK_GoProC_surfaceDraw(JNIEnv *env, jclass clazz, jint w, jint h)
 {
     // Render the preview to the surface
     renderPreview();

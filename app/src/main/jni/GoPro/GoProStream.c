@@ -110,6 +110,8 @@ void release_resources() {
     }
     if (outputFormatContext) {
         LOGI("Freeing output context.");
+        if (outputFormatContext && !(outputFormatContext->oformat->flags & AVFMT_NOFILE))
+            avio_close(outputFormatContext->pb);
         avformat_free_context(outputFormatContext);
     }
     if (packet) {
@@ -121,7 +123,7 @@ void release_resources() {
 }
 
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_init(JNIEnv *env, jobject  __unused instance,
+Java_com_infinitetakes_stream_videoSDK_GoProC_init(JNIEnv *env, jobject  __unused instance,
                                                           jobject jOpts) {
     // Get the values passed in from java side and populate the struct.
     populate_metadata_from_java(env, jOpts);
@@ -130,8 +132,34 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_init(JNIEnv *env, jobject  _
     isConnectionOpen = 0;
 }
 
+int hostname_to_ip(char * hostname , char* ip)
+{
+    struct hostent *he;
+    struct in_addr **addr_list;
+    int i;
+
+    if ( (he = gethostbyname( hostname ) ) == NULL)
+    {
+        // get the host info
+        LOGE("gethostbyname");
+        return 1;
+    }
+
+    addr_list = (struct in_addr **) he->h_addr_list;
+
+    for(i = 0; addr_list[i] != NULL; i++)
+    {
+        //Return the first one;
+        LOGI("IP IS %s", inet_ntoa(*addr_list[i]) );
+        strcpy(ip , inet_ntoa(*addr_list[i]) );
+        return 0;
+    }
+
+    return 1;
+}
+
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startWriting(JNIEnv  __unused *env,
+Java_com_infinitetakes_stream_videoSDK_GoProC_startWriting(JNIEnv  __unused *env,
                                                            jobject  __unused instance,
                                                     jint ptrAudioStream, jint ptrVideoStream) {
     // The input audio and video stream are passed in from the other C file as pointers.
@@ -193,10 +221,16 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startWriting(JNIEnv  __unuse
             isConnectionOpen = 1;
         }
     }
-    // Write the header to the stream.
+char *hostname = "http://google.com";
+char ip[100];
+hostname_to_ip(hostname , ip);
+LOGI("%s resolved to %s" , hostname , ip);
+
+// Write the header to the stream
     if(avformat_write_header(outputFormatContext, NULL) < 0){
         LOGE("Couldn't write header to the file.");
         release_resources();
+        exit(1);
     }
     //  Malloc the packet early for later use.
     if (!packet) {
@@ -206,7 +240,7 @@ Java_com_infinitetakes_stream_videoSDK_GoProWrapper_startWriting(JNIEnv  __unuse
 }
 
 JNIEXPORT void JNICALL
-Java_com_infinitetakes_stream_videoSDK_GoProWrapper_writeFrame(JNIEnv  __unused *env,
+Java_com_infinitetakes_stream_videoSDK_GoProC_writeFrame(JNIEnv  __unused *env,
         jobject  __unused instance, jint addy) {
     //  Reference to AVPacket is passed in from other C process.
     AVPacket *pkt = (AVPacket*)addy;
