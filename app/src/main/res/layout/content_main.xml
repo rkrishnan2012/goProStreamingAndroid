@@ -6,17 +6,6 @@
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:showIn="@layout/activity_main" tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceMedium"
-        android:text="Waiting for camera."
-        android:id="@+id/txtName"
-        android:layout_marginTop="42dp"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:textStyle="bold|italic" />
-
 
     <TextView
         android:layout_width="wrap_content"
@@ -31,9 +20,32 @@
 
     <com.infinitetakes.stream.videoSDK.PreviewSurface
         android:layout_width="fill_parent"
-        android:layout_height="300dp"
+        android:layout_height="fill_parent"
         android:id="@+id/previewScreen"
+        android:layout_alignParentBottom="false"
+        android:layout_alignParentTop="true"
+        android:layout_centerInParent="true" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Waiting for camera."
+        android:id="@+id/txtName"
+        android:layout_marginTop="42dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:textStyle="bold|italic"
+        android:textColor="#eaeaea" />
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Stream"
+        android:id="@+id/btnStart"
         android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true" />
+        android:layout_centerHorizontal="true"
+        android:visibility="gone" />
 
 </RelativeLayout>

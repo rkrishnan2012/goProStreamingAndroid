@@ -23,6 +23,7 @@ public class PreviewSurface extends GLSurfaceView {
     public GoProWrapper mWrapper;
     boolean needsSurfaceChange = false;
     int currWidth, currHeight;
+    public static final float GOPRO_W_H_RATIO = 9f/5f;
     public static final float GOPRO_H_W_RATIO = 5f/9f;
 
     public void setNativeWrapper(GoProWrapper wrapper){
@@ -41,16 +42,25 @@ public class PreviewSurface extends GLSurfaceView {
         public void onSurfaceCreated(GL10 gl, EGLConfig c) {}
 
         @Override
-        public void onSurfaceChanged(GL10 gl, final int width, int height) {
+        public void onSurfaceChanged(GL10 gl, final int width, final int height) {
             currWidth = width;
             currHeight = height;
-            //  Let's fix the height to be the proper aspect ratio from the GoPro.
+            //  Let's fix the width to be the proper aspect ratio from the GoPro.
+            final int aspectRatioWidth = (int)(height * GOPRO_W_H_RATIO);
             final int aspectRatioHeight = (int)(width * GOPRO_H_W_RATIO);
-            if(height != aspectRatioHeight){
+            if(aspectRatioWidth > width){
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
                         getHolder().setFixedSize(width, aspectRatioHeight);
+                    }
+                });
+            }
+            else if (aspectRatioWidth < width){
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        getHolder().setFixedSize(aspectRatioWidth, height);
                     }
                 });
             }

@@ -1,9 +1,9 @@
 <resources>
-    <string name="app_name">TestGoPro2</string>
+    <string name="app_name">GoPro Test</string>
     <string name="action_settings">Settings</string>
     <string name="camera_is_on">Camera is on</string>
     <string name="gopro_restart_url"><![CDATA[http://10.5.5.9:8080/gp/gpControl/execute?p1=gpStream&c1=restart]]></string>
     <string name="gopro_info_url">http://10.5.5.9/camera/cv</string>
     <string name="both_networks_ready">Both networks ready</string>
-    <string name="rtmp_url">rtmp://media-servers-v2dev.stre.am:1935/live/gopro</string>
+    <string name="rtmp_url">rtmp://media-servers-v2dev.stre.am:1935/live/gopro2</string>
 </resources>

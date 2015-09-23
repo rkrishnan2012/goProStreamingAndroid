@@ -52,6 +52,7 @@ public class GoProWrapper {
     boolean mNetworksReady = false;
     boolean mReadingCamera = false;
     boolean mStreamingStarted = false;
+    boolean mIsStreaming = false;
     boolean mIsError = false;
     final Object mSyncObject = new Object();
 
@@ -105,13 +106,25 @@ public class GoProWrapper {
         }
     }
 
-    public void beginStreaming() {
+    public void connect() {
         stopSearchGoPro();
         turnOnCamera();
         keepAlive();
         switchToLTE();
         startReadingGoPro();
         startStreamingFrames();
+    }
+
+    public void beginStreaming(){
+        mIsStreaming = true;
+    }
+
+    public void pauseStreaming(){
+        mIsStreaming = false;
+    }
+
+    public boolean isStreaming(){
+        return mIsStreaming;
     }
 
     protected void switchToLTE(){
@@ -178,7 +191,7 @@ public class GoProWrapper {
                                 mSyncObject.notify();
                             }
                         }
-                        if (mStreamingStarted) {
+                        if (mStreamingStarted && mIsStreaming) {
                             mWriteProcess.writeFrame(ptrData);
                         }
                     }

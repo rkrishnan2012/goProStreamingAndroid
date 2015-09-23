@@ -191,7 +191,7 @@ Java_com_infinitetakes_stream_videoSDK_GoProC_startReading(JNIEnv *env,
                         decodedVideoFrame->linesize, 0, 240, pFrameRGB->data,
                         pFrameRGB->linesize);
                     s_pixels = pFrameRGB->data[0];
-                    wait_vsync();
+                    //wait_vsync();
                 }
             }
             if (connectionCallback) {
