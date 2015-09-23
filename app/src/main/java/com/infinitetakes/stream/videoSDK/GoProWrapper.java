@@ -278,7 +278,7 @@ public class GoProWrapper {
                             });
                         }
                         Log.d(TAG, "Found camera " + cameraName);
-                        if (Double.parseDouble(cameraName.toString().split("\\.")[2]) < MIN_GOPRO_VERSION) {
+                        if (!cameraName.toString().contains("session") && Double.parseDouble(cameraName.toString().split("\\.")[2]) < MIN_GOPRO_VERSION) {
                             mIsError = true;
                             new Handler(Looper.getMainLooper()).post(new Runnable() {
                                 @Override
